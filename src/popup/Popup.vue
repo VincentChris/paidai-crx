@@ -68,7 +68,6 @@ const setDefaultDateRange = () => {
   // 计算上周六的日期
   const lastSaturday = friday.subtract(6, 'day')
 
-  ElMessage.success(friday.format('YYYY-MM-DD'))
   dateRange.value = [lastSaturday.toDate(), friday.toDate()]
 }
 
