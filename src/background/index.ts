@@ -22,14 +22,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     // 设置图标标题（hover 提示）
     chrome.action.setTitle({
-      title: message.isWechatMP
-        ? '微信公众号管理助手'
-        : '该功能仅在微信公众号管理后台可用',
+      title: message.isWechatMP ? '微信公众号管理助手' : '该功能仅在微信公众号管理后台可用',
     })
 
     // 设置是否启用弹窗
     chrome.action.setPopup({
-      popup: message.isWechatMP ? 'popup.html' : ''
+      popup: message.isWechatMP ? 'popup.html' : '',
     })
   }
 })
@@ -54,13 +52,35 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
           },
     })
     chrome.action.setTitle({
-      title: isWechatMP
-        ? '微信公众号管理助手'
-        : '该功能仅在微信公众号管理后台可用',
+      title: isWechatMP ? '微信公众号管理助手' : '该功能仅在微信公众号管理后台可用',
     })
     // 设置是否启用弹窗
     chrome.action.setPopup({
-      popup: isWechatMP ? 'popup.html' : ''
+      popup: isWechatMP ? 'popup.html' : '',
     })
+  }
+})
+
+// 监听来自 popup 的消息
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.type === 'getResponseData') {
+    // 监听 webRequest 响应
+    chrome.webRequest.onCompleted.addListener(
+      (details) => {
+        if (details.url.includes('/misc/useranalysis')) {
+          // 获取响应数据
+          fetch(details.url)
+            .then((response) => response.json())
+            .then((data) => {
+              sendResponse({ data })
+            })
+            .catch((error) => {
+              sendResponse({ error: error.message })
+            })
+        }
+      },
+      { urls: ['*://mp.weixin.qq.com/misc/useranalysis*'] },
+    )
+    return true // 保持消息通道开放
   }
 })

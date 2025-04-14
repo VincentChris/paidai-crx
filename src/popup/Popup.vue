@@ -78,9 +78,110 @@ const setDefaultDateRange = () => {
 }
 
 // 获取周数据
-const getWeekData = () => {
-  setDefaultDateRange()
-  ElMessage.success('已切换到本周数据')
+const getWeekData = async () => {
+  try {
+    // 获取当前标签页
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+
+    // 获取当前 URL 的参数
+    const currentUrl = new URL(tab.url || '')
+    const params = new URLSearchParams(currentUrl.search)
+
+    // 只保留 token 和 lang 参数
+    const newParams = new URLSearchParams()
+    const token = params.get('token')
+    const lang = params.get('lang')
+    if (token) newParams.set('token', token)
+    if (lang) newParams.set('lang', lang)
+
+    // 构建新的 URL
+    const newUrl = new URL('/misc/useranalysis', currentUrl.origin)
+    newUrl.search = newParams.toString()
+
+    // 跳转到新页面
+    await chrome.tabs.update(tab.id!, { url: newUrl.toString() })
+
+    // 等待页面加载完成
+    await new Promise((resolve) => setTimeout(resolve, 2000))
+
+    // 注入脚本查找并点击净增关注标签
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id! },
+      func: () => {
+        return new Promise((resolve) => {
+          // 查找净增关注标签
+          const netFansTab = Array.from(document.querySelectorAll('.weui-desktop-tag')).find(
+            (item) => item.textContent?.includes('净增关注'),
+          )
+
+          if (!netFansTab) {
+            resolve({ error: '未找到净增关注标签' })
+            return
+          }
+
+          // 点击净增关注标签
+          ;(netFansTab as HTMLElement).click()
+          resolve({ success: true })
+        })
+      },
+    })
+
+    // 等待数据加载完成
+    await new Promise((resolve) => setTimeout(resolve, 2000))
+
+    // 发送消息给 background script 获取数据
+    const response = await chrome.runtime.sendMessage({ type: 'getResponseData' })
+
+    if (response && response.data) {
+      const data = response.data
+      if (data.category_list && data.category_list.length > 0) {
+        // 获取日期范围内的数据
+        const startDate = dayjs(dateRange.value[0]).format('YYYY-MM-DD')
+        const endDate = dayjs(dateRange.value[1]).format('YYYY-MM-DD')
+
+        const filteredData = data.category_list[0].list.filter(
+          (item: any) => item.date >= startDate && item.date <= endDate,
+        )
+
+        // 计算净增关注总数
+        const totalNetGain = filteredData.reduce(
+          (sum: number, item: any) => sum + item.netgain_user,
+          0,
+        )
+
+        // 更新表格数据
+        tableData.value = [
+          {
+            date: endDate,
+            newFans: totalNetGain,
+            totalFans: 0,
+            weeklyRead: 0,
+            weeklyArticleRead: 0,
+            income: 0,
+            under2k: 0,
+            '2k-5k': 0,
+            '5k-10k': 0,
+            '10k-30k': 0,
+            '30k-100k': 0,
+            over100k: 0,
+            comments: 0,
+            remark: '周数据',
+            editing: {},
+            editValue: {},
+          },
+        ]
+
+        ElMessage.success(`获取周数据成功,净增关注: ${totalNetGain}`)
+      } else {
+        ElMessage.error('未找到数据')
+      }
+    } else {
+      ElMessage.error('获取数据失败')
+    }
+  } catch (error) {
+    console.error('获取周数据失败:', error)
+    ElMessage.error(`获取周数据失败: ${error instanceof Error ? error.message : '未知错误'}`)
+  }
 }
 
 onMounted(() => {

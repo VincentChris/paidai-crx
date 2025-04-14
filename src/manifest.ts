@@ -44,12 +44,20 @@ export default defineManifest({
         'img/paidai-disabled-16.png',
         'img/paidai-disabled-32.png',
         'img/paidai-disabled-48.png',
-        'img/paidai-disabled-128.png'
+        'img/paidai-disabled-128.png',
       ],
       matches: [],
     },
   ],
-  permissions: ['sidePanel', 'storage', 'activeTab', 'scripting'],
+  permissions: [
+    'sidePanel',
+    'storage',
+    'activeTab',
+    'scripting',
+    'webRequest',
+    'webRequestBlocking',
+    '*://mp.weixin.qq.com/*',
+  ],
   host_permissions: ['https://mp.weixin.qq.com/*'],
   chrome_url_overrides: {
     newtab: 'newtab.html',
